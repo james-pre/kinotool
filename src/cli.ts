@@ -1,17 +1,16 @@
 import { Command } from 'commander';
 import * as io from 'ioium/node';
 import { readdirSync, statSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { stringbool } from 'zod';
 import $pkg from '../package.json' with { type: 'json' };
 import type { ResolvedMetadata, Source, SourceName } from './common.js';
-import { loadConfig, saveConfig, type Config } from './config.js';
+import { defaultConfigPath, loadConfig, saveConfig, type Config } from './config.js';
 import * as mkv from './formats/mkv.js';
 import * as media from './media.js';
 import { renameFile } from './name.js';
 import * as sources from './sources/index.js';
-import { isRoot, normalizeSources, resolveMetadata } from './util.js';
-import { stringbool } from 'zod';
+import { normalizeSources, resolveMetadata } from './util.js';
 
 const debug = stringbool().safeParse(process.env.DEBUG).data || process.argv.includes('--debug');
 if (debug) io._setDebugOutput(true);
@@ -53,11 +52,6 @@ function* collectFiles(inputs: Iterable<string>, recursive: boolean): Generator<
 		}
 	}
 }
-
-const defaultConfigPath = join(
-	isRoot ? '/etc' : process.env.XDG_CONFIG_HOME || join(homedir(), '.config'),
-	'kinotool.json'
-);
 
 const cli = new Command('kinotool')
 	.version($pkg.version)

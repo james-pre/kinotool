@@ -20,6 +20,11 @@ export const Config = z.object({
 });
 export interface Config extends z.infer<typeof Config> {}
 
+export const defaultConfigPath = join(
+	isRoot ? '/etc' : process.env.XDG_CONFIG_HOME || join(homedir(), '.config'),
+	'kinotool.json'
+);
+
 export let cacheDir = join(isRoot ? '/var/cache' : process.env.XDG_CACHE_HOME || join(homedir(), '.cache'), 'kinotool');
 
 export function setCacheDir(path: string) {

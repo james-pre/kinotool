@@ -1,5 +1,9 @@
+import * as io from 'ioium/node';
+import { unlinkSync } from 'node:fs';
+import { join } from 'node:path';
+import * as z from 'zod';
 import type { ResolvedMetadata } from '../common.js';
-import type { Config } from '../config.js';
+import { cacheDir, type Config } from '../config.js';
 import type * as media from '../media.js';
 
 export interface LoginResponse {
@@ -25,8 +29,33 @@ export interface SearchResponse {
 
 let token: string | undefined;
 
+const Cache = z.object({
+	token: z.string(),
+	expires: z.int(),
+});
+
+function cachePath() {
+	return join(cacheDir, 'tvdb.json');
+}
+
+const monthMs = 30 * 24 * 3600_000;
+
 export async function login(apikey: string): Promise<string> {
 	if (token) return token;
+
+	const path = cachePath();
+
+	try {
+		const cache = io.readJSON(path, Cache);
+		if (cache.expires > Date.now()) {
+			token = cache.token;
+			io.debug('tvdb: using cached token');
+			return token;
+		} else unlinkSync(path);
+	} catch {
+		io.debug('tvdb: invalid or outdated cache');
+	}
+
 	const res = await fetch('https://api4.thetvdb.com/v4/login', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -38,6 +67,7 @@ export async function login(apikey: string): Promise<string> {
 	}
 	const json = (await res.json()) as LoginResponse;
 	token = json.data.token;
+	io.writeJSON(path, { token, expires: Date.now() + monthMs - 100 });
 	return token;
 }
 
