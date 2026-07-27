@@ -10,6 +10,7 @@ export interface Result {
 	title?: string;
 	original_title?: string;
 	release_date?: string;
+	media_type: 'movie' | 'tv';
 	/** Present on TV results. */
 	name?: string;
 	original_name?: string;
@@ -22,6 +23,32 @@ export interface Result {
 	vote_count?: number;
 	/** Only on TV detail responses, used to cross-reference TVDB/fanart. */
 	external_ids?: ExternalIds;
+}
+
+export interface CollectionReference {
+	id: number;
+	name: string;
+	poster_path: string;
+	backdrop_path: string;
+}
+
+export interface GenreRef {
+	id: number;
+	name: string;
+}
+
+export interface Movie {
+	adult: boolean;
+	backdrop_path: string;
+	belongs_to_collection?: CollectionReference;
+	genres: GenreRef[];
+	homepage?: string;
+	id: number;
+	imdb_id?: string;
+	poster_path: string;
+	release_date: string;
+	runtime: number;
+	title: string;
 }
 
 export interface ExternalIds {
