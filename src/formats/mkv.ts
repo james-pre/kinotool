@@ -1,6 +1,5 @@
 import * as io from 'ioium/node';
 import * as fs from 'node:fs';
-import { homedir } from 'node:os';
 import { extname, join } from 'node:path';
 import type { ResolvedMetadata } from '../common.js';
 import { cacheDir, type Config } from '../config.js';

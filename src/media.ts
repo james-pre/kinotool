@@ -4,6 +4,7 @@ import type { MediaType } from './common.js';
 import { NameInfo } from './common.js';
 import type { Config } from './config.js';
 import { resolveNameInfo } from './name.js';
+import { styleText } from 'node:util';
 
 export const Override = z.object({
 	...NameInfo.partial().shape,
@@ -45,9 +46,44 @@ export function identify(inputPath: string, config: Config): Identity {
 
 	let { mkvTitle = title } = override;
 	if (type === 'tv') {
-		mkvTitle = override.mkvTitle || `${title} - S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+		mkvTitle =
+			override.mkvTitle || `${title} - S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
 		return { inputPath, key: fileName, fileName, type, title, mkvTitle, year, season, episode, override };
 	}
 
 	return { inputPath, key: fileName, fileName, type, title, mkvTitle, year, override };
+}
+
+function* getFormatFields(ident: Identity): Generator<[label: string, value: unknown]> {
+	yield ['Title', ident.title];
+	yield ['Year', ident.year];
+	yield ['Type', ident.type == 'movie' ? 'Movie' : 'TV Show'];
+
+	if (ident.type == 'tv') {
+		yield ['Season', ident.season];
+		yield ['Episode', ident.episode];
+	}
+}
+
+export function formatIdentity(ident: Identity): string {
+	const fields = Array.from(getFormatFields(ident));
+
+	const labelLength = Math.max(...fields.map(([label]) => label.length));
+
+	let formatted = '';
+
+	for (const [label, value] of fields) {
+		const valueText =
+			typeof value == 'string'
+				? styleText('yellow', value)
+				: typeof value == 'number'
+					? Number.isFinite(value)
+						? styleText('blue', value.toString())
+						: styleText('red', '(invalid)')
+					: styleText('dim', '(unknown)');
+
+		formatted += `${label.padEnd(labelLength)} : ${valueText}\n`;
+	}
+
+	return formatted;
 }

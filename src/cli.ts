@@ -11,6 +11,10 @@ import * as media from './media.js';
 import { renameFile } from './name.js';
 import * as sources from './sources/index.js';
 import { isRoot, normalizeSources, resolveMetadata } from './util.js';
+import { stringbool } from 'zod';
+
+const debug = stringbool().safeParse(process.env.DEBUG).data || process.argv.includes('--debug');
+if (debug) io._setDebugOutput(true);
 
 async function prepareSources(names: SourceName[], config: Config): Promise<Source[]> {
 	const _sources = names.map(src => sources[src]);
@@ -71,33 +75,37 @@ const cli = new Command('kinotool')
 	.option('-N, --replace-filename', 'Rename the file: strip quality/source tags and join words with underscores')
 	.option('-a, --audio-default', 'Set default audio track to AAC, ignoring commentary/descriptive tracks')
 	.option('-r, --recursive', 'Recurse into directories, processing every media file found')
-	.option('--debug', 'Verbose debug output')
+	.option('--debug', 'Enable debug output')
 	.showHelpAfterError()
 	.action(async function main(files: string[], options) {
-		if (options.debug) io._setDebugOutput(true);
+		const config = loadConfig(options.config);
+		const requestedSources = normalizeSources(options.source);
 
-		if (
+		const absFiles = Array.from(collectFiles(files, !!options.recursive));
+		if (!absFiles.length) throw new Error('No files specified.');
+
+		const isInfoOnly =
 			!options.replaceThumbnail &&
 			!options.replaceTitle &&
 			!options.clean &&
 			!options.audioDefault &&
-			!options.replaceFilename
-		) {
-			throw new Error('Nothing to do. Use -t, -n, -c, -a, and/or -N. The machines require verbs.');
-		}
+			!options.replaceFilename;
 
-		const config = loadConfig(options.config);
-		const requestedSources = normalizeSources(options.source);
-		const activeSources =
-			options.replaceThumbnail || options.replaceTitle ? await prepareSources(requestedSources, config) : [];
-
-		const absFiles = Array.from(collectFiles(files, !!options.recursive));
-		if (!absFiles.length) throw new Error('No MKV files to process.');
+		const activeSources = isInfoOnly
+			? []
+			: options.replaceThumbnail || options.replaceTitle
+				? await prepareSources(requestedSources, config)
+				: [];
 
 		for (const absPath of absFiles) {
 			if (absFiles.length > 1) io.log(`\n=== ${absPath} ===`);
 			const info = mkv.getInfo(absPath);
 			const identity = media.identify(absPath, config);
+
+			if (isInfoOnly) {
+				console.log(media.formatIdentity(identity));
+				continue;
+			}
 
 			let metadata: ResolvedMetadata | null = null;
 			if (options.replaceThumbnail || options.replaceTitle) {
@@ -105,7 +113,7 @@ const cli = new Command('kinotool')
 				if (!metadata) {
 					io.error(`metadata: no match for ${identity.title}`);
 				} else {
-					io.log(
+					io.debug(
 						`metadata: ${metadata.title}${metadata.year ? ` (${metadata.year})` : ''} via ${metadata.source}`
 					);
 				}
