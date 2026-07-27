@@ -40,6 +40,7 @@
 		"prepublishOnly": "npm run build"
 	},
 	"devDependencies": {
+		"@commander-js/extra-typings": "^15.0.0",
 		"@eslint/js": "^10.0.1",
 		"@types/node": "^26.1.1",
 		"eslint": "^10.1.0",
@@ -57,7 +58,6 @@
 		"arrowParens": "avoid"
 	},
 	"dependencies": {
-		"@commander-js/extra-typings": "^15.0.0",
 		"commander": "^15.0.0",
 		"ioium": "^1.7.2"
 	}
