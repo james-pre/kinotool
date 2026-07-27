@@ -61,6 +61,7 @@
 	"dependencies": {
 		"commander": "^15.0.0",
 		"ioium": "^1.7.2",
+		"tmdb-ts": "^2.3.0",
 		"zod": "^4.4.3"
 	}
 }

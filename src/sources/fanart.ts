@@ -56,7 +56,7 @@ export async function resolve(identity: media.Identity, config: Config): Promise
 		if (config.apiKeys?.tmdb) {
 			const tmdbId = await tmdb.resolveId(identity);
 			if (tmdbId) {
-				const ids = await tmdb.get<tmdb.ExternalIds>(`/3/tv/${tmdbId}/external_ids`);
+				const ids = await tmdb.api.tvShows.externalIds(tmdbId);
 				tvdbId = ids.tvdb_id ?? undefined;
 			}
 		}
