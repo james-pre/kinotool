@@ -65,11 +65,17 @@ export async function get<T>(path: string, params?: Record<string, string>): Pro
 	const url = new URL(`https://api4.thetvdb.com/v4${path}`);
 	for (const [key, value] of Object.entries(params ?? {})) url.searchParams.set(key, value);
 	const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
-	if (!res.ok) {
-		const body = await res.text().catch(() => '');
-		throw new Error(`TVDB HTTP ${res.status}: ${body.slice(0, 200)}`);
+
+	const response = (await res.json().catch(() => ({ status: 'error', message: 'Invalid response (not json)' }))) as {
+		status: string;
+		data: T;
+		message?: string;
+	};
+
+	if (!res.ok || response.status === 'error') {
+		throw new Error(`TVDB HTTP ${res.status}: ${response.message}`);
 	}
-	const response = (await res.json()) as { data: T };
+
 	return response.data;
 }
 
