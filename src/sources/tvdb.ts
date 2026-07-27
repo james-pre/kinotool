@@ -22,11 +22,6 @@ export interface SearchResult {
 	thumbnail?: string;
 }
 
-export interface SearchResponse {
-	status: string;
-	data: SearchResult[];
-}
-
 let token: string | undefined;
 
 const Cache = z.object({
@@ -74,7 +69,8 @@ export async function get<T>(path: string, params?: Record<string, string>): Pro
 		const body = await res.text().catch(() => '');
 		throw new Error(`TVDB HTTP ${res.status}: ${body.slice(0, 200)}`);
 	}
-	return (await res.json()) as T;
+	const response = (await res.json()) as { data: T };
+	return response.data;
 }
 
 export async function resolve(identity: media.Identity, config: Config): Promise<ResolvedMetadata | null> {
@@ -89,9 +85,8 @@ export async function resolve(identity: media.Identity, config: Config): Promise
 	};
 	if (identity.year) params.year = String(identity.year);
 
-	const search = await get<SearchResponse>('/search', params);
-	const results = Array.isArray(search.data) ? search.data : [];
-	if (results.length === 0) return null;
+	const results = await get<SearchResult[]>('/search', params);
+	if (!results?.length) return null;
 
 	// Results come back ranked; the first with a poster/image wins.
 	const best = results.find(r => r.image_url || r.poster || r.posters?.length) ?? results[0];
