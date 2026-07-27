@@ -87,7 +87,7 @@ async function search(identity: media.Identity): Promise<Result | null> {
 		page: '1',
 	};
 	if (identity.year) params[identity.type === 'movie' ? 'year' : 'first_air_date_year'] = String(identity.year);
-	const search = await get<SearchResponse>('/3/search/' + identity.type, params);
+	const search = await get<SearchResponse>('/3/search/multi', params);
 	const results = Array.isArray(search.results) ? search.results : [];
 
 	const normQuery = normalizeTitle(identity.title);
