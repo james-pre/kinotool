@@ -3,16 +3,13 @@ import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import * as z from 'zod';
-import { SourceName } from './common.js';
-import { Override } from './media.js';
 import { isRoot } from './util.js';
 
 export const Config = z.object({
-	apiKeys: z.partialRecord(SourceName, z.string()).default({}),
+	tmdbApiKey: z.string().nullish(),
 	cleanPatterns: z
 		.array(z.string())
 		.default(['^MoviesMod\\.(blue|farm)$', '\\s*-\\s*MoviesMod\\.(blue|farm)\\s*$', '\\s*-\\s*Pahe\\.in\\s*$']),
-	media: z.record(z.string(), Override).default({}),
 	/** Percent through the media file to grab the local thumbnail frame from. */
 	thumbnailPercent: z.number().min(0).max(100).default(35),
 	/** Fallback seek (seconds) for the local thumbnail when duration is unknown. */
@@ -26,9 +23,11 @@ export const defaultConfigPath = join(
 );
 
 export let cacheDir = join(isRoot ? '/var/cache' : process.env.XDG_CACHE_HOME || join(homedir(), '.cache'), 'kinotool');
+mkdirSync(cacheDir, { recursive: true });
 
 export function setCacheDir(path: string) {
 	cacheDir = path;
+	mkdirSync(cacheDir, { recursive: true });
 }
 
 export function loadConfig(path: string): Config {

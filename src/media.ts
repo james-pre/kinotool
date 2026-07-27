@@ -1,19 +1,7 @@
-import { basename, dirname, resolve } from 'node:path';
-import * as z from 'zod';
-import type { MediaType } from './common.js';
-import { NameInfo } from './common.js';
-import type { Config } from './config.js';
-import { resolveNameInfo } from './name.js';
+import { basename } from 'node:path';
 import { styleText } from 'node:util';
-
-export const Override = z.object({
-	...NameInfo.partial().shape,
-	type: z.literal(['movie', 'tv', 'manual']).optional(),
-	tmdbId: z.number().int().optional(),
-	poster: z.string().optional(),
-	mkvTitle: z.string().optional(),
-});
-export interface Override extends z.infer<typeof Override> {}
+import type { MediaType, NameInfo } from './common.js';
+import { resolveNameInfo } from './name.js';
 
 export interface Identity extends NameInfo {
 	title: string;
@@ -21,37 +9,24 @@ export interface Identity extends NameInfo {
 	key: string;
 	fileName: string;
 	type: MediaType;
-	mkvTitle: string;
-	override?: Override;
+	mkvTitle?: string;
 }
 
-export function findOverride(inputPath: string, config: Config): Override | undefined {
-	const media = config.media || {};
-	const abs = resolve(inputPath);
-	const fileName = basename(inputPath);
-	const parentName = basename(dirname(inputPath));
-	return media[abs] || media[inputPath] || media[fileName] || media[parentName];
-}
-
-export function identify(inputPath: string, config: Config): Identity {
+export function identify(inputPath: string): Identity {
 	const fileName = basename(inputPath);
 
-	const override = findOverride(inputPath, config) || {};
 	const type: MediaType = fileName.match(/S(\d{2})E(\d{2})(?:[-E](\d{2}))?/i) ? 'tv' : 'movie';
 
-	const { title, year, episode, season }: NameInfo = {
-		...resolveNameInfo(inputPath),
-		...override,
-	};
+	const { title, year, episode, season }: NameInfo = resolveNameInfo(inputPath);
 
-	let { mkvTitle = title } = override;
+	let mkvTitle = undefined;
+
 	if (type === 'tv') {
-		mkvTitle =
-			override.mkvTitle || `${title} - S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
-		return { inputPath, key: fileName, fileName, type, title, mkvTitle, year, season, episode, override };
+		mkvTitle = `${title} - S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+		return { inputPath, key: fileName, fileName, type, title, mkvTitle, year, season, episode };
 	}
 
-	return { inputPath, key: fileName, fileName, type, title, mkvTitle, year, override };
+	return { inputPath, key: fileName, fileName, type, title, mkvTitle, year };
 }
 
 function* getFormatFields(ident: Identity): Generator<[label: string, value: unknown]> {

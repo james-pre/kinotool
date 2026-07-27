@@ -1,9 +1,8 @@
 import * as io from 'ioium/node';
 import { accessSync, constants as fsConstants, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ResolvedMetadata } from '../common.js';
-import { cacheDir, type Config } from '../config.js';
-import type * as media from '../media.js';
+import { cacheDir, type Config } from './config.js';
+import type * as media from './media.js';
 
 /** Title from the file name: drop extension, swap separators for spaces, tidy whitespace. */
 export function titleFromFileName(fileName: string): string {
@@ -73,19 +72,3 @@ export function extractFrame(file: string, identity: media.Identity, config: Con
 	accessSync(outPath, fsConstants.R_OK);
 	return outPath;
 }
-
-export async function resolve(identity: media.Identity, config: Config): Promise<ResolvedMetadata | null> {
-	// identity.mkvTitle already carries the parsed show/movie title (plus "- SxxExx" for TV).
-	// Fall back to the file name only when parsing produced nothing useful.
-	const title = identity.override?.title || identity.mkvTitle || titleFromFileName(identity.fileName);
-	let posterPath: string | undefined;
-	try {
-		posterPath = extractFrame(identity.inputPath, identity, config);
-	} catch (err: any) {
-		io.warn(`local: frame extraction failed: ${err.message}`);
-	}
-	return { title, year: identity.year, posterPath, source: 'local' };
-}
-
-export const name = 'local';
-export const needsKey = false;

@@ -4,28 +4,16 @@ import { readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { stringbool } from 'zod';
 import $pkg from '../package.json' with { type: 'json' };
-import type { ResolvedMetadata, Source, SourceName } from './common.js';
-import { defaultConfigPath, loadConfig, saveConfig, type Config } from './config.js';
-import * as mkv from './formats/mkv.js';
+import { defaultConfigPath, loadConfig, saveConfig } from './config.js';
+import { extractFrame } from './local.js';
 import * as media from './media.js';
+import * as mkv from './mkv.js';
 import { renameFile } from './name.js';
-import * as sources from './sources/index.js';
-import { normalizeSources, resolveMetadata } from './util.js';
+import { writePosterFromURL } from './poster.js';
+import { resolveTMDB } from './tmdb.js';
 
 const debug = stringbool().safeParse(process.env.DEBUG).data || process.argv.includes('--debug');
 if (debug) io._setDebugOutput(true);
-
-async function prepareSources(names: SourceName[], config: Config): Promise<Source[]> {
-	const _sources = names.map(src => sources[src]);
-	using rl = io.getReadline();
-	for (const source of _sources) {
-		if (!source.needsKey || config.apiKeys[source.name]) continue;
-		const key = await rl.question(`Enter API key for ${source.name}: `);
-		if (!key.trim()) throw new Error(`API key is required for ${source.name}`);
-		config.apiKeys[source.name] = key.trim();
-	}
-	return _sources;
-}
 
 /** Expand input paths into .mkv files, descending into directories when recursive. */
 function* collectFiles(inputs: Iterable<string>, recursive: boolean): Generator<string> {
@@ -58,11 +46,7 @@ const cli = new Command('kinotool')
 	.description($pkg.description)
 	.argument('<files...>', 'Media files to process')
 	.option('-C, --config <path>', 'Path to the configuration file', defaultConfigPath)
-	.option(
-		'-S, --source <name...>',
-		'Source(s) in fallback order: local, tmdb, tvdb, fanart',
-		(value, previous: string[] = []) => [...previous, value]
-	)
+	.option('-L, --local', 'Do not use TMDB for fetching metadata')
 	.option('-t, --replace-thumbnail', 'Replace embedded cover art from a source')
 	.option('-n, --replace-title', 'Replace the container title from a metadata source')
 	.option('-c, --clean', 'Clean subtitle/audio/title names with configured regex patterns')
@@ -73,7 +57,6 @@ const cli = new Command('kinotool')
 	.showHelpAfterError()
 	.action(async function main(files: string[], options) {
 		const config = loadConfig(options.config);
-		const requestedSources = normalizeSources(options.source);
 
 		const absFiles = Array.from(collectFiles(files, !!options.recursive));
 		if (!absFiles.length) throw new Error('No files specified.');
@@ -85,33 +68,21 @@ const cli = new Command('kinotool')
 			!options.audioDefault &&
 			!options.replaceFilename;
 
-		const activeSources = isInfoOnly
-			? []
-			: options.replaceThumbnail || options.replaceTitle
-				? await prepareSources(requestedSources, config)
-				: [];
-
 		for (const absPath of absFiles) {
 			if (absFiles.length > 1) io.log(`\n=== ${absPath} ===`);
 			const info = mkv.getInfo(absPath);
-			const identity = media.identify(absPath, config);
+			const identity = media.identify(absPath);
 
 			if (isInfoOnly) {
 				console.log(media.formatIdentity(identity));
 				continue;
 			}
 
-			let metadata: ResolvedMetadata | null = null;
-			if (options.replaceThumbnail || options.replaceTitle) {
-				metadata = await resolveMetadata(identity, activeSources, config);
-				if (!metadata) {
-					io.error(`metadata: no match for ${identity.title}`);
-				} else {
-					io.debug(
-						`metadata: ${metadata.title}${metadata.year ? ` (${metadata.year})` : ''} via ${metadata.source}`
-					);
-				}
-			}
+			const metadata =
+				(!options.local &&
+					(options.replaceThumbnail || options.replaceTitle) &&
+					(await resolveTMDB(identity, config))) ||
+				null;
 
 			if (options.clean) {
 				mkv.cleanTrackNames(absPath, info, config);
@@ -122,13 +93,32 @@ const cli = new Command('kinotool')
 				mkv.setAacDefaultAudio(absPath, info);
 			}
 
-			if (options.replaceTitle && metadata) {
-				const title = identity.override?.mkvTitle || metadata.title || identity.mkvTitle;
+			if (options.replaceTitle) {
+				const overallTitle =
+					metadata?.media_type == 'movie' ? metadata.title : metadata?.name || identity.title;
+				const title =
+					identity.type == 'movie'
+						? overallTitle
+						: `${overallTitle} - S${String(identity.season).padStart(2, '0')}E${String(identity.episode).padStart(2, '0')}`;
 				mkv.setContainerTitle(absPath, title);
 			}
 
-			if (options.replaceThumbnail && metadata) {
-				const coverPath = await mkv.getPoster(identity, metadata);
+			if (options.replaceThumbnail) {
+				let coverPath: string | undefined;
+
+				if (metadata) {
+					coverPath = await writePosterFromURL(
+						identity,
+						`https://image.tmdb.org/t/p/w500${metadata.poster_path}`
+					);
+				} else {
+					try {
+						coverPath = extractFrame(identity.inputPath, identity, config);
+					} catch (err: any) {
+						io.warn(`local: frame extraction failed: ${err.message}`);
+					}
+				}
+
 				if (coverPath) {
 					mkv.replaceCover(absPath, coverPath);
 				} else {

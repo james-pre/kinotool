@@ -1,10 +1,7 @@
 import * as io from 'ioium/node';
-import * as fs from 'node:fs';
-import { extname, join } from 'node:path';
-import type { ResolvedMetadata } from '../common.js';
-import { cacheDir, type Config } from '../config.js';
-import type * as media from '../media.js';
-import { applyCleanPatterns } from '../util.js';
+import { extname } from 'node:path';
+import { type Config } from './config.js';
+import { applyCleanPatterns } from './util.js';
 
 export interface Track {
 	id: number;
@@ -101,34 +98,6 @@ export function setContainerTitle(file: string, title: string): void {
 	io.trackCommand('Setting container title', 'mkvpropedit', file, '--edit', 'info', '--set', `title=${title}`);
 }
 
-export async function getPoster(identity: media.Identity, metadata: ResolvedMetadata): Promise<string | null> {
-	if (metadata.posterPath) {
-		fs.accessSync(metadata.posterPath, fs.constants.R_OK);
-		return metadata.posterPath;
-	}
-
-	if (!metadata.posterUrl) return null;
-
-	fs.mkdirSync(cacheDir, { recursive: true });
-	const cacheName = `${safeFileName(identity.title)}${identity.year ? `-${identity.year}` : ''}.poster.jpg`;
-	const outPath = join(cacheDir, cacheName);
-
-	try {
-		fs.accessSync(outPath, fs.constants.R_OK);
-		io.debug(`thumbnail: cached ${outPath}`);
-		return outPath;
-	} catch {
-		// download below
-	}
-
-	io.debug(`thumbnail: download ${metadata.posterUrl}`);
-	const res = await fetch(metadata.posterUrl);
-	if (!res.ok) throw new Error(`poster download failed: HTTP ${res.status}`);
-	const bytes = new Uint8Array(await res.arrayBuffer());
-	fs.writeFileSync(outPath, bytes);
-	return outPath;
-}
-
 export function replaceCover(file: string, coverPath: string): void {
 	const ext = extname(coverPath).toLowerCase();
 	const isPng = ext === '.png';
@@ -156,8 +125,4 @@ export function replaceCover(file: string, coverPath: string): void {
 	io.debug(`thumbnail: embed ${attachmentName}`);
 	// mkvpropedit exits 1 on warnings (e.g. deleting a cover that isn't present); only 2 is a real error.
 	io.trackCommand({ text: 'Embedding thumbnail', ignoreCode: [1] }, 'mkvpropedit', ...args);
-}
-
-function safeFileName(value: string): string {
-	return value.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
 }
