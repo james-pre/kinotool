@@ -34,24 +34,19 @@ const Cache = z.object({
 	expires: z.int(),
 });
 
-function cachePath() {
-	return join(cacheDir, 'tvdb.json');
-}
-
 const monthMs = 30 * 24 * 3600_000;
 
-export async function login(apikey: string): Promise<string> {
-	if (token) return token;
+export async function login(apikey: string): Promise<void> {
+	if (token) return;
 
-	const path = cachePath();
+	const cachePath = join(cacheDir, 'tvdb.json');
 
 	try {
-		const cache = io.readJSON(path, Cache);
+		const cache = io.readJSON(cachePath, Cache);
 		if (cache.expires > Date.now()) {
 			token = cache.token;
 			io.debug('tvdb: using cached token');
-			return token;
-		} else unlinkSync(path);
+		} else unlinkSync(cachePath);
 	} catch {
 		io.debug('tvdb: invalid or outdated cache');
 	}
@@ -67,11 +62,11 @@ export async function login(apikey: string): Promise<string> {
 	}
 	const json = (await res.json()) as LoginResponse;
 	token = json.data.token;
-	io.writeJSON(path, { token, expires: Date.now() + monthMs - 100 });
-	return token;
+	io.writeJSON(cachePath, { token, expires: Date.now() + monthMs - 100 });
 }
 
-export async function get<T>(token: string, path: string, params?: Record<string, string>): Promise<T> {
+export async function get<T>(path: string, params?: Record<string, string>): Promise<T> {
+	if (!token) throw new Error('Not logged into TVDB');
 	const url = new URL(`https://api4.thetvdb.com/v4${path}`);
 	for (const [key, value] of Object.entries(params ?? {})) url.searchParams.set(key, value);
 	const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
@@ -85,7 +80,7 @@ export async function get<T>(token: string, path: string, params?: Record<string
 export async function resolve(identity: media.Identity, config: Config): Promise<ResolvedMetadata | null> {
 	const apikey = config.apiKeys?.tvdb;
 	if (!apikey) throw new Error('missing TVDB API key');
-	const token = await login(apikey);
+	await login(apikey);
 
 	const params: Record<string, string> = {
 		query: identity.title,
@@ -94,7 +89,7 @@ export async function resolve(identity: media.Identity, config: Config): Promise
 	};
 	if (identity.year) params.year = String(identity.year);
 
-	const search = await get<SearchResponse>(token, '/search', params);
+	const search = await get<SearchResponse>('/search', params);
 	const results = Array.isArray(search.data) ? search.data : [];
 	if (results.length === 0) return null;
 
