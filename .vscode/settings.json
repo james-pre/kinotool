@@ -1,0 +1,10 @@
+{
+	"[yaml]": {
+		"editor.insertSpaces": true,
+		"editor.tabSize": 4
+	},
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.formatOnSave": true,
+	"cSpell.words": ["kinotool"],
+	"js/ts.tsdk.path": "node_modules/typescript/lib"
+}

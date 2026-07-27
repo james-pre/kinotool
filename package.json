@@ -1,0 +1,64 @@
+{
+	"name": "kinotool",
+	"version": "0.0.1",
+	"description": "Manage metadata about movies and TV shows",
+	"license": "LGPL-3.0-or-later",
+	"keywords": [
+		"movies",
+		"tv",
+		"tv shows"
+	],
+	"bin": {
+		"kinotool": "dist/main.js"
+	},
+	"files": [
+		"dist",
+		"LICENSE.md"
+	],
+	"type": "module",
+	"homepage": "https://github.com/james-pre/kinotool",
+	"author": "James Prevett <jp@jamespre.dev> (https://jamespre.dev)",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/james-pre/kinotool.git"
+	},
+	"bugs": {
+		"url": "https://github.com/james-pre/kinotool/issues"
+	},
+	"engines": {
+		"node": ">= 22"
+	},
+	"exports": {
+		".": "./dist/index.js",
+		"./*": "./dist/*.js"
+	},
+	"scripts": {
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"lint": "tsc -p tsconfig.json --noEmit && eslint src",
+		"build": "tsc -p tsconfig.json",
+		"prepublishOnly": "npm run build"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"@types/node": "^26.1.1",
+		"eslint": "^10.1.0",
+		"globals": "^17.7.0",
+		"prettier": "^3.4.1",
+		"typescript": "^6.0.2",
+		"typescript-eslint": "^8.58.0"
+	},
+	"prettier": {
+		"singleQuote": true,
+		"useTabs": true,
+		"trailingComma": "es5",
+		"tabWidth": 4,
+		"printWidth": 120,
+		"arrowParens": "avoid"
+	},
+	"dependencies": {
+		"@commander-js/extra-typings": "^15.0.0",
+		"commander": "^15.0.0",
+		"ioium": "^1.7.2"
+	}
+}
