@@ -73,6 +73,7 @@ const cli = new Command('kinotool')
 	.showHelpAfterError()
 	.action(async function main(files: string[], options) {
 		const config = loadConfig(options.config);
+		sources.tmdb.setToken(config.apiKeys.tmdb);
 		const requestedSources = normalizeSources(options.source);
 
 		const absFiles = Array.from(collectFiles(files, !!options.recursive));

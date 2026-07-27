@@ -37,13 +37,20 @@ export interface SearchResponse {
 	total_results: number;
 }
 
-export async function get<T>(token: string, path: string, params?: Record<string, string>): Promise<T> {
-	const url = new URL(`https://api.themoviedb.org${path}`);
-	for (const [key, value] of Object.entries(params ?? {})) url.searchParams.set(key, value);
-	return fetchAPI<T>(token, url);
+let token: string | undefined;
+
+export function setToken(value: string | undefined) {
+	token = value;
 }
 
-async function fetchAPI<T>(token: string, url: URL): Promise<T> {
+export async function get<T>(path: string, params?: Record<string, string>): Promise<T> {
+	const url = new URL(`https://api.themoviedb.org${path}`);
+	for (const [key, value] of Object.entries(params ?? {})) url.searchParams.set(key, value);
+	return fetchAPI<T>(url);
+}
+
+async function fetchAPI<T>(url: URL): Promise<T> {
+	if (!token) throw new Error('missing TMDb token');
 	const res = await fetch(url, {
 		headers: {
 			Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
@@ -66,13 +73,13 @@ function toMetadata(identity: media.Identity, media: Result): ResolvedMetadata {
 }
 
 /** Resolve the TMDb id for an identity, honoring an explicit override first. */
-export async function resolveId(token: string, identity: media.Identity): Promise<number | null> {
+export async function resolveId(identity: media.Identity): Promise<number | null> {
 	if (identity.override?.tmdbId) return identity.override.tmdbId;
-	const result = await search(token, identity);
+	const result = await search(identity);
 	return result?.id ?? null;
 }
 
-async function search(token: string, identity: media.Identity): Promise<Result | null> {
+async function search(identity: media.Identity): Promise<Result | null> {
 	const params: Record<string, string> = {
 		query: identity.title,
 		include_adult: 'false',
@@ -80,7 +87,7 @@ async function search(token: string, identity: media.Identity): Promise<Result |
 		page: '1',
 	};
 	if (identity.year) params[identity.type === 'movie' ? 'year' : 'first_air_date_year'] = String(identity.year);
-	const search = await get<SearchResponse>(token, '/3/search/' + identity.type, params);
+	const search = await get<SearchResponse>('/3/search/' + identity.type, params);
 	const results = Array.isArray(search.results) ? search.results : [];
 
 	const normQuery = normalizeTitle(identity.title);
@@ -113,11 +120,11 @@ export async function resolve(identity: media.Identity, config: Config): Promise
 	if (!token) throw new Error('missing TMDb token');
 
 	if (identity.override?.tmdbId) {
-		const media = await get<Result>(token, `/3/${identity.type}/${identity.override.tmdbId}`);
+		const media = await get<Result>(`/3/${identity.type}/${identity.override.tmdbId}`);
 		return toMetadata(identity, media);
 	}
 
-	const best = await search(token, identity);
+	const best = await search(identity);
 	if (!best) return null;
 	return toMetadata(identity, best);
 }

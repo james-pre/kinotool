@@ -48,16 +48,15 @@ export async function resolve(identity: media.Identity, config: Config): Promise
 	const apiKey = config.apiKeys?.fanart;
 	if (!apiKey) throw new Error('missing fanart.tv API key');
 
-	// fanart.tv has no search; it keys off TMDb (movies) or TVDB (TV) ids.
-	// We lean on the TMDb token to resolve those ids when not overridden.
-	const tmdbToken = config.apiKeys?.tmdb;
-
 	if (identity.type === 'tv') {
 		let tvdbId: number | undefined;
-		if (tmdbToken) {
-			const tmdbId = await tmdb.resolveId(tmdbToken, identity);
+
+		// fanart.tv has no search; it keys off TMDb (movies) or TVDB (TV) ids.
+		// We lean on the TMDb token to resolve those ids when not overridden.
+		if (config.apiKeys?.tmdb) {
+			const tmdbId = await tmdb.resolveId(identity);
 			if (tmdbId) {
-				const ids = await tmdb.get<tmdb.ExternalIds>(tmdbToken, `/3/tv/${tmdbId}/external_ids`);
+				const ids = await tmdb.get<tmdb.ExternalIds>(`/3/tv/${tmdbId}/external_ids`);
 				tvdbId = ids.tvdb_id ?? undefined;
 			}
 		}
@@ -70,7 +69,7 @@ export async function resolve(identity: media.Identity, config: Config): Promise
 	}
 
 	let tmdbId = identity.override?.tmdbId;
-	if (!tmdbId && tmdbToken) tmdbId = (await tmdb.resolveId(tmdbToken, identity)) ?? undefined;
+	if (!tmdbId && config.apiKeys?.tmdb) tmdbId = (await tmdb.resolveId(identity)) ?? undefined;
 	if (!tmdbId) throw new Error('fanart.tv movie lookup needs a TMDb id (set a TMDb key or tmdbId override)');
 
 	const data = await get<MovieResponse>(apiKey, `/movies/${tmdbId}`);
