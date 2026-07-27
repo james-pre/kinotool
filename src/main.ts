@@ -5,7 +5,6 @@ import * as io from 'ioium/node';
 import { readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { createInterface } from 'node:readline/promises';
 import $pkg from '../package.json' with { type: 'json' };
 import type { ResolvedMetadata, Source, SourceName } from './common.js';
 import { loadConfig, saveConfig, type Config } from './config.js';
@@ -15,10 +14,9 @@ import { renameFile } from './name.js';
 import * as sources from './sources/index.js';
 import { isRoot, normalizeSources, resolveMetadata } from './util.js';
 
-using rl = createInterface({ input: process.stdin, output: process.stdout });
-
 async function prepareSources(names: SourceName[], config: Config): Promise<Source[]> {
 	const _sources = names.map(src => sources[src]);
+	using rl = io.getReadline();
 	for (const source of _sources) {
 		if (!source.needsKey || config.apiKeys[source.name]) continue;
 		const key = await rl.question(`Enter API key for ${source.name}: `);
