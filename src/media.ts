@@ -1,46 +1,53 @@
 import { basename } from 'node:path';
 import { styleText } from 'node:util';
-import type { MediaType, NameInfo } from './common.js';
+import { NameInfo } from './common.js';
 import { resolveNameInfo } from './name.js';
+import * as z from 'zod';
 
-export interface Identity extends NameInfo {
-	title: string;
+export const MediaMetadata = z.object({
+	...NameInfo.shape,
+	id: z.int().positive(),
+	isTV: z.boolean(),
+	mkvTitle: z.string().optional(),
+});
+
+export interface MediaMetadata extends z.infer<typeof MediaMetadata> {}
+
+export interface LocalMedia extends MediaMetadata {
 	inputPath: string;
 	key: string;
-	fileName: string;
-	type: MediaType;
-	mkvTitle?: string;
 }
 
-export function identify(inputPath: string): Identity {
+export function fromPath(inputPath: string): LocalMedia {
 	const fileName = basename(inputPath);
 
-	const type: MediaType = fileName.match(/S(\d{2})E(\d{2})(?:[-E](\d{2}))?/i) ? 'tv' : 'movie';
+	const isTV = !!fileName.match(/S(\d{2})E(\d{2})(?:[-E](\d{2}))?/i),
+		id = 0;
 
 	const { title, year, episode, season }: NameInfo = resolveNameInfo(inputPath);
 
 	let mkvTitle = undefined;
 
-	if (type === 'tv') {
+	if (isTV) {
 		mkvTitle = `${title} - S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
-		return { inputPath, key: fileName, fileName, type, title, mkvTitle, year, season, episode };
+		return { id, inputPath, key: fileName, title, mkvTitle, year, season, episode, isTV };
 	}
 
-	return { inputPath, key: fileName, fileName, type, title, mkvTitle, year };
+	return { id, inputPath, key: fileName, title, mkvTitle, year, isTV };
 }
 
-function* getFormatFields(ident: Identity): Generator<[label: string, value: unknown]> {
+function* getFormatFields(ident: MediaMetadata): Generator<[label: string, value: unknown]> {
 	yield ['Title', ident.title];
 	yield ['Year', ident.year];
-	yield ['Type', ident.type == 'movie' ? 'Movie' : 'TV Show'];
+	yield ['Type', ident.isTV ? 'TV Show' : 'Movie'];
 
-	if (ident.type == 'tv') {
+	if (ident.isTV) {
 		yield ['Season', ident.season];
 		yield ['Episode', ident.episode];
 	}
 }
 
-export function formatIdentity(ident: Identity): string {
+export function formatIdentity(ident: MediaMetadata): string {
 	const fields = Array.from(getFormatFields(ident));
 
 	const labelLength = Math.max(...fields.map(([label]) => label.length));

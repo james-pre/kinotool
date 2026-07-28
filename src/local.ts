@@ -38,17 +38,20 @@ function safeFileName(value: string): string {
 
 /**
  * Pick a representative frame and write it to the cache as a JPEG.
- * Uses {@link Config.thumbnailPercent} of the way through the file, clamped to a
- * sensible window so we don't land on opening logos or closing credits.
  */
-export function extractFrame(file: string, identity: media.Identity, config: Config): string {
+export function extractFrame(
+	file: string,
+	identity: media.LocalMedia,
+	thumbnailSeconds: number,
+	thumbnailPercent: number
+): string {
 	mkdirSync(cacheDir, { recursive: true });
 	const outPath = join(cacheDir, `${safeFileName(identity.key)}.frame.jpg`);
 
 	const duration = probeDuration(file);
-	let seek = config.thumbnailSeconds;
+	let seek = thumbnailSeconds;
 	if (duration) {
-		const percentSeek = (duration * config.thumbnailPercent) / 100;
+		const percentSeek = (duration * thumbnailPercent) / 100;
 		// Stay within [5%, 90%] so very long/short files still get a real frame.
 		seek = Math.min(Math.max(percentSeek, duration * 0.05), duration * 0.9);
 	}

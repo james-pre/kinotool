@@ -1,15 +1,15 @@
 import * as io from 'ioium/node';
 import * as fs from 'node:fs';
 import { join } from 'node:path';
+import type { NameInfo } from './common.js';
 import { cacheDir } from './config.js';
-import type * as media from './media.js';
 
 function safeFileName(value: string): string {
 	return value.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
 }
 
-export async function writePosterFromURL(identity: media.Identity, url: string): Promise<string> {
-	const cacheName = `${safeFileName(identity.title)}${identity.year ? `-${identity.year}` : ''}.poster.jpg`;
+export async function writePosterFromURL(info: NameInfo, url: string): Promise<string> {
+	const cacheName = `${safeFileName(info.title)}${info.year ? `-${info.year}` : ''}.poster.jpg`;
 	const outPath = join(cacheDir, cacheName);
 
 	try {

@@ -2,6 +2,8 @@ import * as io from 'ioium/node';
 import { extname } from 'node:path';
 import { type Config } from './config.js';
 import { applyCleanPatterns } from './util.js';
+import type { Episode, Movie } from './tmdb.js';
+import { writePosterFromURL } from './poster.js';
 
 export interface Track {
 	id: number;
@@ -36,8 +38,7 @@ export function getInfo(file: string): Info {
 	return JSON.parse(stdout);
 }
 
-export function cleanTrackNames(file: string, info: Info, config: Config): void {
-	const patterns = (config.cleanPatterns || []).map(p => new RegExp(p, 'g'));
+export function cleanTrackNames(file: string, info: Info, cleanPatterns: RegExp[]): void {
 	const args: string[] = [];
 	let changes = 0;
 
@@ -45,7 +46,7 @@ export function cleanTrackNames(file: string, info: Info, config: Config): void 
 		const oldName = track.properties.track_name;
 		if (oldName == null) continue;
 
-		const newName = applyCleanPatterns(oldName, patterns).trim();
+		const newName = applyCleanPatterns(oldName, cleanPatterns).trim();
 		if (newName === oldName) continue;
 
 		args.push('--edit', `track:@${track.id}`, '--set', `name=${newName}`);
@@ -57,12 +58,11 @@ export function cleanTrackNames(file: string, info: Info, config: Config): void 
 	else io.log('clean: no track name changes');
 }
 
-export function cleanContainerTitle(file: string, info: Info, config: Config): void {
+export function cleanContainerTitle(file: string, info: Info, cleanPatterns: RegExp[]): void {
 	const title = info.container?.properties?.title;
 	if (!title) return;
 
-	const patterns = (config.cleanPatterns || []).map(p => new RegExp(p, 'g'));
-	const cleaned = applyCleanPatterns(title, patterns).trim();
+	const cleaned = applyCleanPatterns(title, cleanPatterns).trim();
 	if (cleaned !== title) setContainerTitle(file, cleaned);
 }
 
@@ -125,4 +125,26 @@ export function replaceCover(file: string, coverPath: string): void {
 	io.debug(`thumbnail: embed ${attachmentName}`);
 	// mkvpropedit exits 1 on warnings (e.g. deleting a cover that isn't present); only 2 is a real error.
 	io.trackCommand({ text: 'Embedding thumbnail', ignoreCode: [1] }, 'mkvpropedit', ...args);
+}
+
+export async function setFromMovie(path: string, movie: Movie, posterPath?: string) {
+	setContainerTitle(path, movie.title);
+
+	posterPath ||= await writePosterFromURL(
+		{ title: movie.title, year: movie.release_date && new Date(movie.release_date).getFullYear() },
+		'https://image.tmdb.org/t/p/w500' + movie.poster_path
+	);
+
+	replaceCover(path, posterPath);
+}
+
+export async function setFromEpisode(path: string, ep: Episode, posterPath?: string) {
+	setContainerTitle(path, `S${ep.season_number} E${ep.episode_number} - ${ep.name}`);
+
+	posterPath ||= await writePosterFromURL(
+		{ title: ep.name, year: ep.air_date && new Date(ep.air_date).getFullYear() },
+		'https://image.tmdb.org/t/p/w300' + ep.still_path
+	);
+
+	replaceCover(path, posterPath);
 }
