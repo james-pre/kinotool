@@ -1,9 +1,8 @@
 import * as io from 'ioium/node';
 import { extname } from 'node:path';
-import { type Config } from './config.js';
-import { applyCleanPatterns } from './util.js';
-import type { Episode, Movie } from './tmdb.js';
 import { writePosterFromURL } from './poster.js';
+import type { Episode, Movie } from './tmdb.js';
+import { applyCleanPatterns } from './util.js';
 
 export interface Track {
 	id: number;

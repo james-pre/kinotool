@@ -1,7 +1,7 @@
 import * as io from 'ioium/node';
 import { accessSync, constants as fsConstants, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { cacheDir, type Config } from './config.js';
+import { cacheDir } from './config.js';
 import type * as media from './media.js';
 
 /** Title from the file name: drop extension, swap separators for spaces, tidy whitespace. */
