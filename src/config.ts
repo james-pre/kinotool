@@ -3,7 +3,13 @@ import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import * as z from 'zod';
-import { isRoot } from './util.js';
+
+export const isRoot =
+	'process' in globalThis &&
+	(globalThis.process.geteuid?.() === 0 ||
+		globalThis.process.getegid?.() === 0 ||
+		globalThis.process.getuid?.() === 0 ||
+		globalThis.process.getgid?.() === 0);
 
 export const Config = z.object({
 	tmdbApiKey: z.string().nullish(),

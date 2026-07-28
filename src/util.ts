@@ -11,6 +11,3 @@ export function applyCleanPatterns(value: string, patterns: RegExp[]): string {
 	for (const pattern of patterns) out = out.replace(pattern, '');
 	return out.replace(/\s+/g, ' ').trim();
 }
-
-export const isRoot =
-	process?.geteuid?.() === 0 || process?.getegid?.() === 0 || process?.getuid?.() === 0 || process?.getgid?.() === 0;
