@@ -138,8 +138,9 @@ const cli = new Command('kinotool')
 		saveConfig(options.config, config);
 	});
 
-cli.on('option:config', value => {
-	config = loadConfig(value);
+cli.hook('preAction', cmd => {
+	const opts = cmd.optsWithGlobals();
+	config = loadConfig(opts.config);
 	if (config.tmdbApiKey) setTmdbToken(config.tmdbApiKey);
 });
 
