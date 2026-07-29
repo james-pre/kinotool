@@ -178,10 +178,20 @@ export interface RemuxResult {
 	transcodedAudio: boolean;
 }
 
+export interface RemuxPlan extends RemuxResult {
+	/** Arguments for `ffmpeg` */
+	args: string[];
+	/** Where ffmpeg writes. Rename it over `output` once ffmpeg exits successfully. */
+	temp: string;
+}
+
 /**
- * Remux a Matroska file into an MP4 that a browser can play easily.
+ * Work out how to remux a file without running anything.
+ *
+ * {@link remuxToMp4} runs ffmpeg synchronously, which blocks for as long as the copy takes.
+ * Long-lived processes should plan the remux and spawn ffmpeg themselves instead.
  */
-export function remuxToMp4(input: string, output: string, options: RemuxOptions = {}): RemuxResult {
+export function planRemuxToMp4(input: string, output: string, options: RemuxOptions = {}): RemuxPlan {
 	const { audio: audioMode = 'auto', audioBitrate = 192, force = false } = options;
 
 	if (!force && existsSync(output)) throw new Error(`Refusing to overwrite ${output}`);
@@ -243,6 +253,21 @@ export function remuxToMp4(input: string, output: string, options: RemuxOptions 
 		`remux: video ${video.codec_name}, audio ${audio?.codec_name ?? 'none'}${transcodedAudio ? ' -> aac' : ''}`
 	);
 
+	return { args, temp, output, video: video.index, audio: audio?.index ?? null, transcodedAudio };
+}
+
+/**
+ * Remux a Matroska file into an MP4 that a browser can play.
+ *
+ * The video is always copied, so this is I/O bound rather than CPU bound.
+ * `moov` is written at the front (`+faststart`) so players know the duration and can seek immediately —
+ * Matroska has no equivalent, since its Cues always land at the end of the file.
+ *
+ * Subtitles and attachments are dropped: MP4 can't hold PGS/ASS, and fonts have nowhere to go.
+ */
+export function remuxToMp4(input: string, output: string, options: RemuxOptions = {}): RemuxResult {
+	const { args, temp, ...result } = planRemuxToMp4(input, output, options);
+
 	try {
 		io.trackCommand(`Remuxing to ${basename(output)}`, 'ffmpeg', ...args);
 		renameSync(temp, output);
@@ -251,5 +276,5 @@ export function remuxToMp4(input: string, output: string, options: RemuxOptions 
 		throw e;
 	}
 
-	return { output, video: video.index, audio: audio?.index ?? null, transcodedAudio };
+	return result;
 }
