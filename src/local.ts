@@ -75,3 +75,33 @@ export function extractFrame(
 	accessSync(outPath, fsConstants.R_OK);
 	return outPath;
 }
+
+export interface ProbeStream {
+	index: number;
+	codec_type: 'video' | 'audio' | 'subtitle' | 'data' | 'attachment';
+	codec_name?: string;
+	channels?: number;
+	disposition?: Partial<Record<'default' | 'forced' | 'comment' | 'attached_pic', number>>;
+	tags?: Record<string, string>;
+}
+
+/**
+ * All streams in a media file, as ffprobe sees them.
+ * ffprobe indices are what `ffmpeg -map 0:<n>` expects, which is why this is used instead of `mkvmerge -J`.
+ */
+export function probeStreams(file: string): ProbeStream[] {
+	const out = io.trackCommand('Probing streams', 'ffprobe', '-v', 'error', '-show_streams', '-of', 'json', file);
+	const { streams } = JSON.parse(out) as { streams?: ProbeStream[] };
+	return streams || [];
+}
+
+/** Cover art is exposed as a video stream, so it has to be told apart from the real one */
+export function isCoverArt(stream: ProbeStream): boolean {
+	return !!stream.disposition?.attached_pic || stream.codec_name === 'mjpeg' || stream.codec_name === 'png';
+}
+
+/** Commentary and description tracks should never be picked as the main audio */
+export function isCommentary(stream: ProbeStream): boolean {
+	if (stream.disposition?.comment) return true;
+	return /commentary|director|cast|crew|descriptive|description|audio description/i.test(stream.tags?.title || '');
+}
