@@ -4,3 +4,10 @@ docs
 *.log
 tmp
 *.tsbuildinfo
+build
+.*
+!.github
+!.vscode
+!.clang-format
+!.gitignore
+!.prettierignore

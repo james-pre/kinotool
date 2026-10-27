@@ -6,3 +6,4 @@ export * from './name.js';
 export * from './poster.js';
 export * as remux from './remux.js';
 export * from './tmdb.js';
+export * as torrent from './torrent/index.js';

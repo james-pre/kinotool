@@ -36,13 +36,14 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"lint": "tsc -p tsconfig.json --noEmit && eslint src",
-		"build": "tsc -p tsconfig.json",
+		"build": "cmake-js rebuild && tsc -b",
 		"prepublishOnly": "npm run build"
 	},
 	"devDependencies": {
 		"@commander-js/extra-typings": "^15.0.0",
 		"@eslint/js": "^10.0.1",
 		"@types/node": "^26.1.1",
+		"cmake-js": "^8.0.0",
 		"eslint": "^10.1.0",
 		"globals": "^17.7.0",
 		"prettier": "^3.4.1",
@@ -61,7 +62,8 @@
 	"dependencies": {
 		"commander": "^15.0.0",
 		"ioium": "^1.7.2",
+		"node-addon-api": "^8.9.2",
 		"tmdb-ts": "^2.3.0",
-		"zod": "^4.4.3"
+		"zod": "^4.6.7"
 	}
 }
