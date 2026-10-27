@@ -1,5 +1,5 @@
 import { fork, type ChildProcess } from 'node:child_process';
-import { EventEmitter, once } from 'node:events';
+import { EventEmitter } from 'node:events';
 import { mkdirSync } from 'node:fs';
 import { basename, dirname, extname, isAbsolute, join } from 'node:path';
 import type { Alert, Message, Method, Methods, Settings, ThreadInit, File, Status } from './shared.js';
@@ -335,9 +335,6 @@ export class Client extends EventEmitter<ClientEvents> {
 	/** Stops every torrent. Save resume data first to continue them later. */
 	async close(): Promise<void> {
 		if (!this.thread.connected) return;
-
-		const exited = once(this.thread, 'exit');
 		await this.call('close');
-		await exited;
 	}
 }

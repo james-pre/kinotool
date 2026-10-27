@@ -39,6 +39,12 @@ function close(): void {
 }
 
 process.on('message', (request: Request) => {
+	// Shutting down can take a while, e.g. when a router doesn't answer requests to remove port mappings
+	if (request.method == 'close') {
+		send({ call: request.call, result: null }, () => process.disconnect!());
+		return;
+	}
+
 	let message: Message;
 
 	try {
@@ -49,12 +55,7 @@ process.on('message', (request: Request) => {
 		message = { call: request.call, error: errorText(error) };
 	}
 
-	if (request.method != 'close') {
-		send(message);
-		return;
-	}
-
-	send(message, () => process.disconnect!());
+	send(message);
 });
 
 // Also covers the parent going away without closing the session
