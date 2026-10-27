@@ -63,7 +63,7 @@ export type Alert =
 	| { type: 'status'; statuses: TorrentStatus[] }
 	| { type: 'metadata' | 'finished' | 'removed'; id: string }
 	| { type: 'error' | 'resume_data_failed'; id: string; message: string }
-	| { type: 'resume_data'; id: string; data: Uint8Array }
+	| { type: 'resume_data'; id: string; data: Uint8Array<ArrayBuffer> }
 	| { type: 'renamed'; id: string; index: number; name: string }
 	| { type: 'rename_failed'; id: string; index: number; message: string }
 	| { type: 'warning'; id?: string; message: string };

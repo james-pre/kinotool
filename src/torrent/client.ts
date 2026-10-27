@@ -29,7 +29,7 @@ export interface DownloadEvents {
 	status: [status: TorrentStatus];
 	/** Every selected file is complete, with absolute paths. Can happen again, e.g. after resuming. */
 	finished: [files: TorrentFile[]];
-	resume_data: [data: Uint8Array];
+	resume_data: [data: Uint8Array<ArrayBuffer>];
 	failed: [error: Error];
 	removed: [];
 }
@@ -42,7 +42,7 @@ export class Download extends EventEmitter<DownloadEvents> {
 
 	protected selection?: Promise<void>;
 	protected readonly renames = new Map<number, PromiseWithResolvers<void>>();
-	protected savingResumeData?: PromiseWithResolvers<Uint8Array>;
+	protected savingResumeData?: PromiseWithResolvers<Uint8Array<ArrayBuffer>>;
 	protected removing?: PromiseWithResolvers<void>;
 
 	constructor(
@@ -212,7 +212,7 @@ export class Download extends EventEmitter<DownloadEvents> {
 	}
 
 	/** Also emitted as `resume_data` */
-	async saveResumeData(): Promise<Uint8Array> {
+	async saveResumeData(): Promise<Uint8Array<ArrayBuffer>> {
 		if (this.savingResumeData) return this.savingResumeData.promise;
 
 		this.savingResumeData = Promise.withResolvers();
