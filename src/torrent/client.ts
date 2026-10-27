@@ -2,7 +2,7 @@ import { fork, type ChildProcess } from 'node:child_process';
 import { EventEmitter, once } from 'node:events';
 import { mkdirSync } from 'node:fs';
 import { basename, dirname, extname, isAbsolute, join } from 'node:path';
-import type { Alert, Message, Method, Methods, Settings, ThreadInit, TorrentFile, TorrentStatus } from './shared.js';
+import type { Alert, Message, Method, Methods, Settings, ThreadInit, File, Status } from './shared.js';
 
 export const videoExtensions = ['.mkv', '.mp4', '.m4v', '.webm', '.mov', '.avi', '.wmv', '.mpg', '.mpeg', '.ts'];
 
@@ -20,22 +20,22 @@ export interface DownloadOptions {
 	 * Pick which files to download when more than one has a matching extension.
 	 * Picking none removes the torrent. By default, every matching file is downloaded.
 	 */
-	select?(files: TorrentFile[]): number[] | Promise<number[]>;
+	select?(files: File[]): number[] | Promise<number[]>;
 }
 
 export interface DownloadEvents {
 	/** Files were picked and are being downloaded */
-	selected: [files: TorrentFile[]];
-	status: [status: TorrentStatus];
+	selected: [files: File[]];
+	status: [status: Status];
 	/** Every selected file is complete, with absolute paths. Can happen again, e.g. after resuming. */
-	finished: [files: TorrentFile[]];
+	finished: [files: File[]];
 	resume_data: [data: Uint8Array<ArrayBuffer>];
 	failed: [error: Error];
 	removed: [];
 }
 
 export class Download extends EventEmitter<DownloadEvents> {
-	status?: TorrentStatus;
+	status?: Status;
 
 	/** Whether the files to download have been picked */
 	isSelected: boolean = false;
@@ -165,13 +165,13 @@ export class Download extends EventEmitter<DownloadEvents> {
 	}
 
 	/** @internal */
-	update(status: TorrentStatus): void {
+	update(status: Status): void {
 		this.status = status;
 		this.emit('status', status);
 	}
 
 	/** Null until the torrent's metadata is available */
-	files(): Promise<TorrentFile[] | null> {
+	files(): Promise<File[] | null> {
 		return this.client.call('files', this.id);
 	}
 

@@ -7,7 +7,7 @@ import * as z from 'zod';
 export const Settings = z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]));
 export type Settings = z.infer<typeof Settings>;
 
-export type TorrentState =
+export type State =
 	| 'checking_files'
 	| 'downloading_metadata'
 	| 'downloading'
@@ -16,10 +16,10 @@ export type TorrentState =
 	| 'checking_resume_data'
 	| 'unknown';
 
-export interface TorrentStatus {
+export interface Status {
 	id: string;
 	name: string;
-	state: TorrentState;
+	state: State;
 	/** The directory files are saved relative to */
 	directory: string;
 	/** Progress of the selected files, from 0 to 1 */
@@ -40,7 +40,7 @@ export interface TorrentStatus {
 	error: string | null;
 }
 
-export interface TorrentFile {
+export interface File {
 	index: number;
 	/** Relative to the torrent's directory, unless it has been moved somewhere absolute */
 	path: string;
@@ -60,7 +60,7 @@ export interface AddParams {
 }
 
 export type Alert =
-	| { type: 'status'; statuses: TorrentStatus[] }
+	| { type: 'status'; statuses: Status[] }
 	| { type: 'metadata' | 'finished' | 'removed'; id: string }
 	| { type: 'error' | 'resume_data_failed'; id: string; message: string }
 	| { type: 'resume_data'; id: string; data: Uint8Array<ArrayBuffer> }
@@ -71,7 +71,7 @@ export type Alert =
 /** What the thread can be asked to do */
 export interface Methods {
 	add(params: AddParams): string;
-	files(id: string): TorrentFile[] | null;
+	files(id: string): File[] | null;
 	/** Download only these files */
 	select(id: string, indices: number[]): void;
 	rename(id: string, index: number, name: string): void;
@@ -79,7 +79,7 @@ export interface Methods {
 	resume(id: string): void;
 	saveResumeData(id: string): void;
 	remove(id: string, deleteFiles: boolean): void;
-	status(id: string): TorrentStatus;
+	status(id: string): Status;
 	applySettings(settings: Settings): void;
 	close(): void;
 }
