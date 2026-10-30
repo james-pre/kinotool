@@ -1,6 +1,6 @@
 {
 	"name": "kinotool",
-	"version": "0.3.4",
+	"version": "0.3.5",
 	"description": "Manage metadata about movies and TV shows",
 	"license": "LGPL-3.0-or-later",
 	"keywords": [
