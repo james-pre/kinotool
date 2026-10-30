@@ -36,7 +36,9 @@ function* collectFiles(inputs: Iterable<string>, recursive: boolean): Generator<
 				io.error(`skip: ${input}: is a directory (use -r to recurse)`);
 				continue;
 			}
-			const entries = readdirSync(absPath).map(name => join(absPath, name));
+			const entries = readdirSync(absPath, { withFileTypes: true })
+				.filter(entry => entry.isDirectory() || /\.mkv$/i.test(entry.name))
+				.map(entry => join(absPath, entry.name));
 			yield* collectFiles(entries, recursive);
 		}
 	}
