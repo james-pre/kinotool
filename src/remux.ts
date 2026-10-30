@@ -5,7 +5,7 @@ import { basename, resolve } from 'node:path';
 import { isCommentary, isCoverArt, probeStreams } from './local.js';
 
 /** Video codecs a browser can play from an MP4 without re-encoding */
-export const browserVideoCodecs = ['h264', 'av1', 'vp9', 'vp8'];
+export const browserVideoCodecs = ['h264', 'hevc', 'av1', 'vp9', 'vp8'];
 
 /** Audio codecs a browser can play from an MP4 without re-encoding */
 export const browserAudioCodecs = ['aac', 'mp3', 'flac', 'opus'];
@@ -79,6 +79,9 @@ export function plan(input: string, output: string, options: Options = {}): Plan
 	if (audio) args.push('-map', `0:${audio.index}`);
 
 	args.push('-c:v', 'copy');
+
+	// Safari only plays HEVC tagged as hvc1, and ffmpeg defaults to hev1
+	if (video.codec_name === 'hevc') args.push('-tag:v', 'hvc1');
 
 	if (audio)
 		args.push(...(transcodedAudio ? ['-c:a', 'aac', '-b:a', `${audioBitrate}k`, '-ac', '2'] : ['-c:a', 'copy']));
