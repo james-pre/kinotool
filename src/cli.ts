@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as io from 'ioium/node';
-import { readdirSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, readdirSync, statSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
 import { stringbool } from 'zod';
 import $pkg from '../package.json' with { type: 'json' };
 import { defaultConfigPath, loadConfig, saveConfig, type Config } from './config.js';
@@ -10,6 +10,7 @@ import * as media from './media.js';
 import * as mkv from './mkv.js';
 import { renameFile } from './name.js';
 import { writePosterFromURL } from './poster.js';
+import * as remux from './remux.js';
 import { api, Episode, Movie, resolveTMDB, setTmdbToken } from './tmdb.js';
 
 const debug = stringbool().safeParse(process.env.DEBUG).data || process.argv.includes('--debug');
@@ -186,6 +187,47 @@ cli.command('fix-episode')
 		});
 
 		await mkv.setFromEpisode(path, Episode.parse(episode));
+	});
+
+cli.command('remux')
+	.description('Remux Matroska files into MP4s a browser can play, re-encoding audio only when needed')
+	.argument('<files...>', 'Matroska files to remux')
+	.option('-o, --output <path>', 'Where to write the MP4 when remuxing a single file')
+	.option('-r, --recursive', 'Recurse into directories, remuxing every Matroska file found')
+	.option('-f, --force', 'Replace MP4s that already exist')
+	.option('--copy-audio', 'Never re-encode audio, even if browsers cannot decode it')
+	.option('-b, --audio-bitrate <kbit/s>', 'Bitrate for re-encoded audio', value => parseInt(value, 10))
+	.action(async function main(files: string[], options) {
+		const inputs = Array.from(collectFiles(files, !!options.recursive));
+		if (!inputs.length) throw new Error('No files specified.');
+		if (options.output && inputs.length > 1) throw new Error('--output only works with a single file');
+
+		let failed = 0;
+
+		for (const input of inputs) {
+			const output = options.output ? resolve(options.output) : input.replace(/\.mkv$/i, '.mp4');
+
+			if (!options.force && existsSync(output)) {
+				io.warn(`skip: ${input}: already remuxed`);
+				continue;
+			}
+
+			try {
+				await io.track(
+					`Remuxing ${basename(input)}`,
+					remux.run(input, output, {
+						audio: options.copyAudio ? 'copy' : 'auto',
+						audioBitrate: options.audioBitrate,
+						force: options.force,
+					})
+				);
+			} catch (error) {
+				io.error(`remux: ${input}: ${io.errorText(error)}`);
+				failed++;
+			}
+		}
+
+		if (failed) throw new Error(`${failed} of ${inputs.length} files could not be remuxed`);
 	});
 
 export default cli;

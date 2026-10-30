@@ -1,7 +1,7 @@
 import * as io from 'ioium/node';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, renameSync, rmSync } from 'node:fs';
-import { basename, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { isCommentary, isCoverArt, probeStreams } from './local.js';
 
 /** Video codecs a browser can play from an MP4 without re-encoding */
@@ -161,7 +161,10 @@ export function runSync(input: string, output: string, options: Options = {}): R
 	const { args, temp, ...result } = plan(input, output, options);
 
 	try {
-		io.trackCommand(`Remuxing to ${basename(output)}`, 'ffmpeg', ...args);
+		const ffmpeg = spawnSync('ffmpeg', args, { stdio: 'ignore' });
+		if (ffmpeg.error) throw ffmpeg.error;
+		if (ffmpeg.status !== 0) throw new Error(`ffmpeg failed with ${ffmpeg.signal ?? 'code ' + ffmpeg.status}`);
+
 		renameSync(temp, output);
 	} catch (e) {
 		rmSync(temp, { force: true });
