@@ -191,14 +191,13 @@ cli.command('fix-episode')
 
 cli.command('remux')
 	.description('Remux Matroska files into MP4s a browser can play, re-encoding audio only when needed')
-	.argument('<files...>', 'Matroska files to remux')
+	.argument('<files...>', 'Matroska files to remux, or directories with -r')
 	.option('-o, --output <path>', 'Where to write the MP4 when remuxing a single file')
-	.option('-r, --recursive', 'Recurse into directories, remuxing every Matroska file found')
 	.option('-f, --force', 'Replace MP4s that already exist')
 	.option('--copy-audio', 'Never re-encode audio, even if browsers cannot decode it')
 	.option('-b, --audio-bitrate <kbit/s>', 'Bitrate for re-encoded audio', value => parseInt(value, 10))
 	.action(async function main(files: string[], options) {
-		const inputs = Array.from(collectFiles(files, !!options.recursive));
+		const inputs = Array.from(collectFiles(files, !!this.optsWithGlobals().recursive));
 		if (!inputs.length) throw new Error('No files specified.');
 		if (options.output && inputs.length > 1) throw new Error('--output only works with a single file');
 
